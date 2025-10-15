@@ -1,6 +1,5 @@
 'use client';
 
-import { useRouter } from 'next/navigation'; // ONLY ADD THIS LINE
 import { useEffect, useRef } from 'react';
 
 export default function Home() {
@@ -9,7 +8,6 @@ export default function Home() {
   const particleCount = 600;
   let particles: Particle[] = [];
   let targetPositions: { x: number; y: number }[] = [];
-  const router = useRouter(); // ONLY ADD THIS LINE
 
   class Particle {
     x: number;
@@ -118,11 +116,6 @@ export default function Home() {
     };
   }, []);
 
-  // ONLY ADD THIS FUNCTION
-  const handleBegin = () => {
-    router.push('/auth/signup');
-  };
-
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-gradient-to-b from-[#1a1a1a] to-[#020003]">
       <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full z-0"></canvas>
@@ -132,7 +125,6 @@ export default function Home() {
           AMVORA
         </h1>
         <button
-          onClick={handleBegin} // ONLY ADD THIS
           className="relative z-10 px-8 py-3 text-white font-semibold border border-white/20 bg-white/5 rounded-full backdrop-blur-md
                      transition-all duration-300
                      hover:border-purple-500 hover:shadow-[0_0_20px_rgba(155,93,229,0.7)]
