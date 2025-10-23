@@ -22,18 +22,24 @@ export function useAutonomousCompanion() {
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [patterns, setPatterns] = useState<UserPatterns | null>(null);
   
-  // Use your actual hooks
-  const { notes = [] } = useNotes();
-  const { sessions = [] } = useFocusSessions();
+  // FIXED: Use the correct hook structure
+  const { notes } = useNotes(); // This returns { notes: [], isLoading, ... }
+  const { sessions } = useFocusSessions(); // This returns { sessions: [], isLoading, ... }
   const { isActive = false } = useTimer();
 
   // Calculate user patterns from REAL data
   const calculatePatterns = (): UserPatterns => {
+    console.log('🔍 Sessions data:', sessions);
+    console.log('🔍 Notes data:', notes);
+    
     // Count completed sessions
     const completedSessions = sessions.filter(session => {
       return session.completed === true;
     });
     
+    console.log('✅ Completed sessions:', completedSessions.length);
+    console.log('📊 Total sessions:', sessions.length);
+
     // Best focus times
     const hourSuccess: { [key: number]: { total: number; successful: number } } = {};
     completedSessions.forEach(session => {
@@ -47,7 +53,7 @@ export function useAutonomousCompanion() {
         hourSuccess[hour].total++;
         if (success) hourSuccess[hour].successful++;
       } catch (error) {
-        // Skip invalid sessions
+        console.log('Error processing session hour:', error);
       }
     });
 
@@ -66,7 +72,7 @@ export function useAutonomousCompanion() {
           durationSuccess[duration] = (durationSuccess[duration] || 0) + (success ? 1 : 0);
         }
       } catch (error) {
-        // Skip invalid sessions
+        console.log('Error processing session duration:', error);
       }
     });
 
@@ -85,7 +91,7 @@ export function useAutonomousCompanion() {
         const hour = new Date(note.created_at).getHours();
         noteHours[hour] = (noteHours[hour] || 0) + 1;
       } catch (error) {
-        // Skip invalid notes
+        console.log('Error processing note hour:', error);
       }
     });
 
@@ -114,7 +120,7 @@ export function useAutonomousCompanion() {
                              (lastSession.actual_minutes || lastSession.duration_minutes) * 60 * 1000;
         needsBreak = (Date.now() - sessionEndTime) > 2 * 60 * 60 * 1000; // 2 hours
       } catch (error) {
-        // Skip break calculation if error
+        console.log('Error calculating break time:', error);
       }
     }
 
@@ -135,6 +141,7 @@ export function useAutonomousCompanion() {
       totalSessions: sessions.length
     };
 
+    console.log('📈 Calculated patterns:', patternsResult);
     return patternsResult;
   };
 
@@ -142,6 +149,8 @@ export function useAutonomousCompanion() {
   const generateSuggestions = (patterns: UserPatterns): string[] => {
     const currentHour = new Date().getHours();
     const suggestions: string[] = [];
+
+    console.log('💡 Generating suggestions with patterns:', patterns);
 
     // Session count based suggestions
     if (patterns.totalCompletedSessions === 0 && patterns.totalSessions > 0) {
@@ -180,20 +189,22 @@ export function useAutonomousCompanion() {
     return suggestions.slice(0, 3);
   };
 
-  // Run pattern analysis when data changes
-  useEffect(() => {
-    try {
-      const newPatterns = calculatePatterns();
-      setPatterns(newPatterns);
-      
-      if (!isActive) {
-        const newSuggestions = generateSuggestions(newPatterns);
-        setSuggestions(newSuggestions);
-      }
-    } catch (error) {
-      console.log('Companion analysis error:', error);
+// FIX THIS useEffect - add proper dependencies
+useEffect(() => {
+  try {
+    console.log('🔄 Companion updating with sessions:', sessions.length, 'notes:', notes.length);
+    const newPatterns = calculatePatterns();
+    setPatterns(newPatterns);
+    
+    if (!isActive) {
+      const newSuggestions = generateSuggestions(newPatterns);
+      setSuggestions(newSuggestions);
+      console.log('💬 New suggestions:', newSuggestions);
     }
-  }, [notes, sessions, isActive]);
+  } catch (error) {
+    console.log('❌ Companion analysis error:', error);
+  }
+}, [sessions.length, notes.length, isActive]); // FIXED: Use lengths instead of full arrays
 
   return { 
     suggestions, 

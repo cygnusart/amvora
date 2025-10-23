@@ -1,0 +1,19 @@
+{
+  "Navigation": {
+    "dashboard": "Dashboard",
+    "notes": "Notes", 
+    "analytics": "Analytics",
+    "settings": "Settings"
+  },
+  "FocusTimer": {
+    "startFocus": "Start Focus",
+    "pause": "Pause",
+    "resume": "Resume",
+    "resetSession": "Reset Session",
+    "focusing": "Focusing... Stay in the zone!",
+    "paused": "Paused - Click Resume to continue",
+    "ready": "Ready to focus? Click Start!",
+    "distractions": "distraction(s)",
+    "elapsed": "elapsed"
+  }
+}

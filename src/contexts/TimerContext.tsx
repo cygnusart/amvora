@@ -1,205 +1,99 @@
 'use client';
 
-import { createContext, ReactNode, useContext, useEffect, useRef, useState } from 'react';
+import { FocusSession } from '@/hooks/useFocusSessions';
+import { createContext, ReactNode, useContext, useState } from 'react';
 
-interface TimerState {
+interface TimerContextType {
   timeLeft: number;
-  totalDuration: number;
+  isRunning: boolean;
   isActive: boolean;
   isPaused: boolean;
   distractions: number;
-  sessionId: string | null;
-  startTime: number | null;
-}
-
-interface TimerContextType extends TimerState {
-  startTimer: (duration: number) => void;
+  currentSession: FocusSession | null;
+  progress: number;
+  startTimer: (session: FocusSession) => void;
   pauseTimer: () => void;
-  resumeTimer: () => void;
   resetTimer: () => void;
+  completeSession: () => void;
   addDistraction: () => void;
-  finishSession: () => void;
 }
 
 const TimerContext = createContext<TimerContextType | undefined>(undefined);
 
 export function TimerProvider({ children }: { children: ReactNode }) {
-  const [timer, setTimer] = useState<TimerState>({
-    timeLeft: 0,
-    totalDuration: 300, // Default 5 minutes
-    isActive: false,
-    isPaused: false,
-    distractions: 0,
-    sessionId: null,
-    startTime: null
-  });
+  const [timeLeft, setTimeLeft] = useState<number>(0);
+  const [isRunning, setIsRunning] = useState<boolean>(false);
+  const [isActive, setIsActive] = useState<boolean>(false);
+  const [isPaused, setIsPaused] = useState<boolean>(false);
+  const [distractions, setDistractions] = useState<number>(0);
+  const [currentSession, setCurrentSession] = useState<FocusSession | null>(null);
+  const [progress, setProgress] = useState<number>(0);
 
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Load timer state from localStorage on mount
-  useEffect(() => {
-    const saved = localStorage.getItem('amvora-timer');
-    if (saved) {
-      try {
-        const savedTimer = JSON.parse(saved);
-        // Calculate remaining time if session was active
-        if (savedTimer.isActive && savedTimer.startTime) {
-          const elapsedSeconds = Math.floor((Date.now() - savedTimer.startTime) / 1000);
-          const newTimeLeft = Math.max(0, savedTimer.timeLeft - elapsedSeconds);
-          
-          if (newTimeLeft > 0) {
-            setTimer({
-              ...savedTimer,
-              timeLeft: newTimeLeft,
-              isActive: true
-            });
-          } else {
-            // Session completed while away
-            setTimer({
-              timeLeft: 0,
-              totalDuration: savedTimer.totalDuration,
-              isActive: false,
-              isPaused: false,
-              distractions: savedTimer.distractions,
-              sessionId: null,
-              startTime: null
-            });
-          }
-        } else if (savedTimer.isPaused || savedTimer.isActive) {
-          // Restore paused or active session
-          setTimer(savedTimer);
-        }
-      } catch (error) {
-        console.error('Error loading timer state:', error);
-        // Reset to default if corrupted
-        localStorage.removeItem('amvora-timer');
-      }
-    }
-  }, []);
-
-  // Save timer state to localStorage whenever it changes
-  useEffect(() => {
-    localStorage.setItem('amvora-timer', JSON.stringify(timer));
-  }, [timer]);
-
-  const startTimer = (duration: number) => {
-    const sessionId = Date.now().toString();
-    setTimer({
-      timeLeft: duration,
-      totalDuration: duration,
-      isActive: true,
-      isPaused: false,
-      distractions: 0,
-      sessionId,
-      startTime: Date.now()
-    });
+  const startTimer = (session: FocusSession) => {
+    setCurrentSession(session);
+    setTimeLeft(session.duration_minutes * 60);
+    setIsRunning(true);
+    setIsActive(true);
+    setIsPaused(false);
+    setDistractions(0);
+    setProgress(0);
   };
 
   const pauseTimer = () => {
-    setTimer(prev => ({ 
-      ...prev, 
-      isActive: false, 
-      isPaused: true 
-    }));
-  };
-
-  const resumeTimer = () => {
-    setTimer(prev => ({ 
-      ...prev, 
-      isActive: true, 
-      isPaused: false,
-      startTime: Date.now() // Reset start time on resume
-    }));
+    setIsRunning(false);
+    setIsPaused(true);
   };
 
   const resetTimer = () => {
-    setTimer({
-      timeLeft: 0,
-      totalDuration: 300,
-      isActive: false,
-      isPaused: false,
-      distractions: 0,
-      sessionId: null,
-      startTime: null
-    });
+    setIsRunning(false);
+    setIsActive(false);
+    setIsPaused(false);
+    setTimeLeft(0);
+    setCurrentSession(null);
+    setDistractions(0);
+    setProgress(0);
+  };
+
+  const completeSession = () => {
+    setIsRunning(false);
+    setIsActive(false);
+    setIsPaused(false);
+    setProgress(100);
+    // Here you would call your completeSession mutation
   };
 
   const addDistraction = () => {
-    setTimer(prev => ({ 
-      ...prev, 
-      distractions: prev.distractions + 1 
-    }));
+    setDistractions(prev => prev + 1);
   };
 
-  const finishSession = () => {
-    setTimer(prev => ({ 
-      ...prev, 
-      isActive: false, 
-      isPaused: false,
-      timeLeft: 0 
-    }));
-  };
-
-  // Timer countdown logic
-  useEffect(() => {
-    if (timer.isActive && timer.timeLeft > 0) {
-      intervalRef.current = setInterval(() => {
-        setTimer(prev => {
-          const newTimeLeft = prev.timeLeft - 1;
-          
-          if (newTimeLeft <= 0) {
-            // Session completed
-            return {
-              ...prev,
-              timeLeft: 0,
-              isActive: false,
-              isPaused: false
-            };
-          }
-          
-          return {
-            ...prev,
-            timeLeft: newTimeLeft
-          };
-        });
-      }, 1000);
-    }
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
-  }, [timer.isActive, timer.timeLeft]);
-
-  // Clean up on unmount
-  useEffect(() => {
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
-  }, []);
+  // Timer countdown logic would go here (useEffect)
 
   return (
-    <TimerContext.Provider value={{
-      ...timer,
-      startTimer,
-      pauseTimer,
-      resumeTimer,
-      resetTimer,
-      addDistraction,
-      finishSession
-    }}>
+    <TimerContext.Provider
+      value={{
+        timeLeft,
+        isRunning,
+        isActive,
+        isPaused,
+        distractions,
+        currentSession,
+        progress,
+        startTimer,
+        pauseTimer,
+        resetTimer,
+        completeSession,
+        addDistraction,
+      }}
+    >
       {children}
     </TimerContext.Provider>
   );
 }
 
-export function useTimer() {
+export const useTimer = () => {
   const context = useContext(TimerContext);
   if (context === undefined) {
     throw new Error('useTimer must be used within a TimerProvider');
   }
   return context;
-}
+};

@@ -1,55 +1,130 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: 280 10% 8%; /* #0C0420 */
+  --foreground: 0 0% 98%;
+  --primary: 292 36% 50%; /* #9F6496 */
+  --primary-foreground: 0 0% 98%;
+  --secondary: 285 28% 32%; /* #5D3C64 */
+  --secondary-foreground: 0 0% 98%;
+  --accent: 330 45% 67%; /* #D391B0 */
+  --accent-foreground: 280 10% 8%;
+  --muted: 285 25% 15%;
+  --muted-foreground: 285 25% 70%;
+  --success: 84 55% 71%; /* #BAGE8F */
+  --radius: 0.5rem;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+  background: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: var(--font-geist-sans);
+}
+
+/* CRITICAL: Tailwind base styles reset */
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
-/* Enhanced glass effect */
-.glass-amethyst {
-  background: rgba(15, 23, 42, 0.7);
-  backdrop-filter: blur(20px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 
-    0 25px 50px -12px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.2);
+/* Floating Particles Background */
+.particles-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: -1;
+  overflow: hidden;
 }
 
-/* Floating animation */
+.particle {
+  position: absolute;
+  background: radial-gradient(
+    circle at center,
+    hsl(var(--primary) / 0.4) 0%,
+    hsl(var(--primary) / 0.1) 30%,
+    transparent 70%
+  );
+  border-radius: 50%;
+  animation: float 20s infinite linear;
+  filter: blur(1px);
+}
+
+.particle:nth-child(odd) {
+  background: radial-gradient(
+    circle at center,
+    hsl(var(--accent) / 0.3) 0%,
+    hsl(var(--accent) / 0.05) 40%,
+    transparent 70%
+  );
+}
+
 @keyframes float {
-  0%, 100% { transform: translateY(0px) rotate(0deg); }
-  50% { transform: translateY(-20px) rotate(180deg); }
+  0%, 100% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 0.7;
+  }
+  25% {
+    transform: translate(100px, 50px) rotate(90deg);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translate(50px, 100px) rotate(180deg);
+    opacity: 0.8;
+  }
+  75% {
+    transform: translate(-50px, 75px) rotate(270deg);
+    opacity: 0.3;
+  }
 }
 
-.animate-float {
-  animation: float 6s ease-in-out infinite;
+/* Glowing Effects */
+.glow-text {
+  text-shadow: 
+    0 0 20px hsl(var(--primary) / 0.8),
+    0 0 40px hsl(var(--primary) / 0.6),
+    0 0 60px hsl(var(--primary) / 0.4);
 }
 
-/* Smooth focus transitions */
-input {
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+.glass {
+  background: rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
 }
 
-input:focus {
-  box-shadow: 0 0 0 3px rgba(94, 234, 212, 0.1);
+.glow-button {
+  background: linear-gradient(
+    135deg,
+    hsl(var(--primary) / 0.9) 0%,
+    hsl(var(--accent) / 0.7) 100%
+  );
+  box-shadow:
+    0 0 20px hsl(var(--primary) / 0.5),
+    0 0 40px hsl(var(--primary) / 0.3);
+  backdrop-filter: blur(10px);
+  border: 1px solid hsl(var(--primary) / 0.3);
+}
+
+.glow-button:hover {
+  box-shadow:
+    0 0 30px hsl(var(--primary) / 0.7),
+    0 0 60px hsl(var(--primary) / 0.4);
+  transform: translateY(-2px);
 }

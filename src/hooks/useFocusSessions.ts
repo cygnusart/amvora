@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 
 export interface FocusSession {
   id: string;
@@ -21,15 +22,46 @@ export function useFocusSessions() {
   const { data: sessions, isLoading, error } = useQuery({
     queryKey: ['focus-sessions'],
     queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      // Return empty array if no user (instead of throwing error)
+      if (!user) return [];
+      
       const { data, error } = await supabase
         .from('focus_sessions')
         .select('*')
         .order('started_at', { ascending: false });
       
-      if (error) throw new Error(`Failed to fetch sessions: ${error.message}`);
+      if (error) {
+        console.error('Failed to fetch sessions:', error.message);
+        return []; // Return empty array instead of throwing
+      }
+      
       return data as FocusSession[];
     },
   });
+
+  // ADD REAL-TIME SUBSCRIPTIONS
+  useEffect(() => {
+    const subscription = supabase
+      .channel('focus_sessions_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'focus_sessions',
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['focus-sessions'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [queryClient]);
 
   // Start new focus session
   const startSession = useMutation({
@@ -72,7 +104,6 @@ export function useFocusSessions() {
       notes?: string;
       actual_minutes: number;
     }) => {
-      // Validate actual_minutes to prevent negative values
       const validatedActualMinutes = Math.max(0, actual_minutes);
       
       const { data, error } = await supabase
@@ -109,18 +140,13 @@ export function useFocusSessions() {
   };
 }
 
-// Focus score calculation
 function calculateFocusScore(distractions: number, actualMinutes: number): number {
   let baseScore = 100;
-  
-  // Deduct for distractions (max 40% penalty)
   baseScore -= Math.min(40, distractions * 8);
   
-  // Bonus for longer actual focus time
   if (actualMinutes >= 45) baseScore += 10;
   else if (actualMinutes >= 30) baseScore += 5;
   else if (actualMinutes >= 15) baseScore += 2;
   
-  // Ensure score is between 50-100
   return Math.max(50, Math.min(100, baseScore));
 }

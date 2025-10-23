@@ -1,16 +1,23 @@
-import { supabase } from '@/lib/supabase';
-import { useEffect, useRef, useState } from 'react';
+import { useTimer } from '@/contexts/TimerContext';
 
 interface FocusTimerProps {
   onSessionComplete?: (sessionData: any) => void;
 }
 
 export function FocusTimer({ onSessionComplete }: FocusTimerProps) {
-  const [timeLeft, setTimeLeft] = useState(300); // 5 minutes in seconds
-  const [isActive, setIsActive] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
-  const [distractions, setDistractions] = useState(0);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const {
+    timeLeft,
+    totalDuration,
+    isActive,
+    isPaused,
+    distractions,
+    startTimer,
+    pauseTimer,
+    resumeTimer,
+    resetTimer,
+    addDistraction,
+    completeSession
+  } = useTimer();
 
   // Format time as MM:SS
   const formatTime = (seconds: number) => {
@@ -23,110 +30,17 @@ export function FocusTimer({ onSessionComplete }: FocusTimerProps) {
   const handleStartResume = () => {
     if (isPaused) {
       // Resume from paused state
-      setIsPaused(false);
-      setIsActive(true);
+      resumeTimer();
     } else {
       // Start new session
-      setIsActive(true);
-      setIsPaused(false);
-      setDistractions(0);
+      startTimer(300, 'Focus Session'); // 5 minutes
     }
-  };
-
-  // Pause timer
-  const handlePause = () => {
-    setIsActive(false);
-    setIsPaused(true);
-  };
-
-  // Reset timer
-  const handleReset = () => {
-    setIsActive(false);
-    setIsPaused(false);
-    setTimeLeft(300); // Reset to 5 minutes
-    setDistractions(0);
   };
 
   // Add distraction
   const handleAddDistraction = () => {
-    setDistractions(prev => prev + 1);
+    addDistraction();
   };
-
-  // Complete session and save to database
-  const completeSession = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const actualMinutes = 5 - Math.ceil(timeLeft / 60);
-      const focusScore = calculateFocusScore(distractions, actualMinutes);
-
-      // Save session to database
-      const { error } = await supabase
-        .from('focus_sessions')
-        .insert([
-          {
-            user_id: user.id,
-            planned_duration: 5,
-            actual_duration: actualMinutes,
-            status: 'completed',
-            start_time: new Date(Date.now() - (300 - timeLeft) * 1000).toISOString(),
-            end_time: new Date().toISOString(),
-            distractions: distractions,
-            focus_score: focusScore,
-          }
-        ]);
-
-      if (error) throw error;
-
-      // Call completion callback
-      if (onSessionComplete) {
-        onSessionComplete({
-          actual_duration: actualMinutes,
-          distractions: distractions,
-          focus_score: focusScore
-        });
-      }
-
-    } catch (error) {
-      console.error('Error saving focus session:', error);
-    }
-  };
-
-  // Calculate focus score
-  const calculateFocusScore = (distractions: number, actualMinutes: number): number => {
-    let baseScore = 100;
-    baseScore -= distractions * 8;
-    if (actualMinutes >= 4) baseScore += 10;
-    else if (actualMinutes >= 3) baseScore += 5;
-    else if (actualMinutes >= 2) baseScore += 2;
-    return Math.max(50, Math.min(100, baseScore));
-  };
-
-  // Timer logic
-  useEffect(() => {
-    if (isActive && timeLeft > 0) {
-      intervalRef.current = setInterval(() => {
-        setTimeLeft((time) => {
-          if (time <= 1) {
-            completeSession();
-            return 0;
-          }
-          return time - 1;
-        });
-      }, 1000);
-    } else if (timeLeft === 0) {
-      // Session completed
-      setIsActive(false);
-      setIsPaused(false);
-    }
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
-  }, [isActive, timeLeft]);
 
   // Get timer color based on state
   const getTimerColor = () => {
@@ -153,7 +67,7 @@ export function FocusTimer({ onSessionComplete }: FocusTimerProps) {
         ) : isActive ? (
           // Active - Show Pause button
           <button 
-            onClick={handlePause}
+            onClick={pauseTimer}
             className="px-6 py-3 bg-white/20 hover:bg-white/30 text-white rounded-xl font-semibold text-lg transition-all duration-300 transform hover:scale-105 shadow-lg border border-white/30"
           >
             Pause
@@ -182,7 +96,7 @@ export function FocusTimer({ onSessionComplete }: FocusTimerProps) {
       {/* Reset button - show when active or paused */}
       {(isActive || isPaused) && (
         <button 
-          onClick={handleReset}
+          onClick={resetTimer}
           className="w-full py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg font-medium transition-all duration-300 mb-4 border border-white/20"
         >
           Reset Session
@@ -198,9 +112,9 @@ export function FocusTimer({ onSessionComplete }: FocusTimerProps) {
 
       {/* Progress info */}
       <div className="text-center text-white/70 text-sm mt-4 space-y-1">
-        {timeLeft < 300 && (
+        {timeLeft < totalDuration && (
           <>
-            <div>⏱️ {Math.floor((300 - timeLeft) / 60)}m {((300 - timeLeft) % 60)}s elapsed</div>
+            <div>⏱️ {Math.floor((totalDuration - timeLeft) / 60)}m {((totalDuration - timeLeft) % 60)}s elapsed</div>
             {distractions > 0 && <div>💥 {distractions} distraction(s)</div>}
           </>
         )}
